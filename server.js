@@ -27,15 +27,20 @@ var req = unirest.get(DATA_URL).then( (res) => {    // get data from data.ny.gov
 		}
 	}
 	console.log(JSON.stringify(data,0,4));
+
+	app.listen(serverPort, function () {
+		console.log(`COMPASSTEST Service is listening on port ${serverPort}`);
+		console.log(`__dirname is ${__dirname}`);
+	})
 });
 
 const app = express();
 
-app.use('/compasstest', express.static(path.join(__dirname, '')));  // handle static files (no needed ? since we load it directly from jtml)
+app.use('/compasstest', express.static(path.join(__dirname, '')));  
 
 const serverPort = 4000;
 
-app.get('/compasstest/getdata', async function (req, res) {  // return data for one number
+app.get('/compasstest/getdata', async function (req, res) {  
 
 	let byDate = {};
 	_.each( data, (v,k) => {
@@ -46,7 +51,3 @@ app.get('/compasstest/getdata', async function (req, res) {  // return data for 
 })
 
 
-app.listen(serverPort, function () {
-	console.log(`COMPASSTEST Service is listening on port ${serverPort}`);
-	console.log(`__dirname is ${__dirname}`);
-})

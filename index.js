@@ -2,20 +2,28 @@ window.apiBase="/compasstest/";
 
 $(document).ready(async function () {
 	//get data from server
-	let dataRow = await $.ajax({
+	let data = await $.ajax({
 		url:`${apiBase}getdata`,
 		//headers: {  },
 	}).catch(error => {
 		console.error("getdata error", error);
 	});
-	console.log (dataRow);
+	console.log (data);
+	reorder(data);
+});
+
+function reorder(data) {
 
 	let dataCooked = [];   // [ [num, occurence ]]   - to allow sorting by either number or by occurence
-	 _.each(dataRow, (list,num) =>{
+	_.each(data, (list,num) =>{
 		dataCooked.push({num : num, occurence : list.length});
 	})
-
+	
 	let sorted = _.orderBy(dataCooked,['num'], ['desc']);   // sort numbers in descending order
+	display(sorted);
+}
+
+function display(sorted) {
 	let values = _.map(sorted, item => item.occurence);
 	let labels = _.map(sorted, item => item.num);
 
@@ -65,5 +73,5 @@ $(document).ready(async function () {
 			}
 		}
 	});
-})
+}
 
