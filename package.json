@@ -1,0 +1,21 @@
+{
+  "name": "compasstest",
+  "version": "1.0.0",
+  "description": "fun task",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "compassTest"
+  },
+  "author": "DF",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "lodash": "^4.17.21",
+    "path": "^0.12.7",
+    "unirest": "^0.6.0"
+  }
+}
