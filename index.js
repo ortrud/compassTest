@@ -10,14 +10,14 @@ $(document).ready(async function () {
 	});
 	console.log (dataRow);
 
-	let dataCooked = [];   // [ [num, popularity ]]   - to allow sorting by either number or by popularity
+	let dataCooked = [];   // [ [num, occurence ]]   - to allow sorting by either number or by occurence
 	 _.each(dataRow, (list,num) =>{
-		dataCooked.push({num : num, popularity : list.length});
+		dataCooked.push({num : num, occurence : list.length});
 	})
 
-	let byDescendingPopularity = _.orderBy(dataCooked,['num'], ['desc']);
-	let values = _.map(byDescendingPopularity, item => item.popularity);
-	let labels = _.map(byDescendingPopularity, item => item.num);
+	let sorted = _.orderBy(dataCooked,['num'], ['desc']);   // sort numbers in descending order
+	let values = _.map(sorted, item => item.occurence);
+	let labels = _.map(sorted, item => item.num);
 
 	console.log("labels", labels);
 	console.log("values", values);
@@ -41,7 +41,7 @@ $(document).ready(async function () {
 			responsive : true,
 			title : {
 				display : true,
-				text : `winning numbers by popularity`,
+				text : `Winning numbers occurence in descending number order`,
 			},
 			legend: {
 				position : 'bottom'
@@ -54,7 +54,7 @@ $(document).ready(async function () {
 					position: 'left',
 					scaleLabel : {
 						display : true,
-						labelString : 'Popularity (number of times hit)'
+						labelString : 'Number of occurences'
 					}
 				}],
 				plugins: {
