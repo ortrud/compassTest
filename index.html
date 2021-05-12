@@ -22,8 +22,13 @@
     <div class="card-header">
       NJ winning lotto numbers history
     </div>
-    <div class="card-body">
-      <div id="mainChartContainer" width="400px" height="400px" style="margin:20px; display:block" >
+    <div class="card-body" style="display:flex; flex-direction:row;">
+      
+      
+      <div id="catalog_container" style="max-width:20em"></div>
+
+
+      <div id="mainChartContainer" style="width:80%; margin:20px; " >
         <canvas id="mainChartCanvas"  ></canvas>
       </div>
     </div>
@@ -38,6 +43,8 @@
 <script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+
 
 <!-- Chart.js -->
 <script src="plugins/chart.js/Chart.min.js"></script>
@@ -46,6 +53,17 @@
 
 
 <script src="index.js"></script>
+
+
+<!-- Load React. -->
+<!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+<script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+<!-- JSX Don't use this in production: -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Load our React component. -->
+<script src="catalog_container.js" type="text/babel"></script>
 
 
 </body>
