@@ -37,12 +37,16 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var apiBase = "/compasstest/";
 var mainChart;
 var n;
+// catalog of charts
 var chartCatalog = [
     { key: 0, text: "Occurence totals", action: function (n, d) { occurenceTotals(n, d); } },
+    { key: 1, text: "Occurence details", action: function (n, d) { occurenceDetails(n, d); } },
+    { key: 2, text: "Time lapse", action: function (n, d) { timeLapse(n, d); } }, // x-date, y-winning numbers
+    //{key : 2, text : `History of all numbers`, action : function(n,d) { numberHistory(n,d)} });
 ];
-for (n = 1; n <= 75; n++) {
-    chartCatalog.push({ key: n, text: "History of number " + n, action: function (n, d) { numberHistory(n, d); } });
-}
+// for (n=1; n <=75; n++) {
+// 	chartCatalog.push( {key : n, text : `History of number ${n}`, action : function(n,d) { numberHistory(n,d)} });
+// }
 $(document).ready(function () {
     return __awaiter(this, void 0, void 0, function () {
         var data;
@@ -56,15 +60,16 @@ $(document).ready(function () {
                 case 1:
                     data = _a.sent();
                     console.log(data);
-                    load_chart_catalog(chartCatalog, data);
+                    load_chart_catalog(chartCatalog, data); // data containes lotto dates (ordered and winning numbers history)
                     return [2 /*return*/];
             }
         });
     });
 });
 function numberHistory(number, history) {
-    var labels = history[number];
-    var data = _.map(labels, function (d) { return Math.floor(Math.random() * 10) }); // set it 1 for any date it occured
+    var labels = history[sprintf("%02d", number)]; // prepend 0 to single digit numbers
+    //let labels = history[number];
+    var data = _.map(labels, function (d) { return 1; }); // set it 1 for any date it occured
     var ctx = document.getElementById('mainChartCanvas');
     if (mainChart)
         mainChart.destroy();
@@ -78,6 +83,7 @@ function numberHistory(number, history) {
                     label: 'occurs',
                     yAxisID: 'occurs',
                     data: data,
+                    fill: false,
                     borderWidth: 1
                 },
             ]
@@ -93,12 +99,12 @@ function numberHistory(number, history) {
                 position: 'bottom'
             },
             tooltips: {
-            callbacks : {
-            	label : function(tooltipItem, data) { 
-            		let i = tooltipItem.index;
-            		return data.labels[i]
-            	},
-            }
+            // callbacks : {
+            // 	label : function(tooltipItem, data) { 
+            // 		let i = tooltipItem.index;
+            // 		return data.labels[i] + ': $' + data.datasets[0].data[i].toLocaleString('en')
+            // 	},
+            // }
             },
             scales: {
                 xAxes: [{
@@ -115,7 +121,7 @@ function numberHistory(number, history) {
                         position: 'left',
                         ticks: setTicks(data),
                         scaleLabel: {
-                            display: true,
+                            display: false,
                             labelString: 'Occurs'
                         }
                     }]
@@ -136,7 +142,7 @@ function setTicks(list) {
 }
 function occurenceTotals(chartId, data) {
     var dataCooked = []; // [ [num, occurence ]]   - to allow sorting by either number or by occurence
-    _.each(data, function (list, num) {
+    _.each(data.history, function (list, num) {
         dataCooked.push({ num: num, occurence: list.length });
     });
     var sorted = _.orderBy(dataCooked, ['num'], ['desc']); // sort numbers in descending order
@@ -184,5 +190,156 @@ function occurenceTotals(chartId, data) {
                 }
             }
         }
+    });
+}
+function occurenceDetails(chartId, data) {
+    return __awaiter(this, void 0, void 0, function () {
+        var labels, datasets, yAxes, ctx;
+        return __generator(this, function (_a) {
+            labels = data.dates;
+            datasets = [];
+            yAxes = [];
+            _.each(data.history, function (dates, winner) {
+                datasets.push({
+                    label: winner,
+                    // if number was a winner, set datapoint to it, ortherwise null
+                    data: _.map(labels, function (l) { return _.find(dates, function (d) { return d == l; }) ? winner : null; }),
+                    borderWidth: 1,
+                    showLine: false
+                });
+            });
+            ctx = document.getElementById('mainChartCanvas');
+            if (mainChart)
+                mainChart.destroy();
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    animation: false,
+                    //onClick : ycChartClickFunction,
+                    title: {
+                        display: true,
+                        text: "Winning numbers details in descending number order"
+                    },
+                    legend: {
+                        position: 'bottom'
+                    },
+                    // tooltips : {
+                    // 	callbacks : {
+                    // 		label : function(tooltipItem, data) { 
+                    // 			let i = tooltipItem.index;
+                    // 			return data.labels[i] + ': $' + data.datasets[0].data[i].toLocaleString('en')
+                    // 		},
+                    // 	}
+                    // },
+                    scales: {
+                        xAxes: [{
+                                type: 'time',
+                                ticks: setTicks(labels),
+                                time: {
+                                    displayFormats: {
+                                    //quarter: 'MMM YYYY'
+                                    }
+                                }
+                            }],
+                        yAxes: [{
+                                type: 'linear',
+                                position: 'left',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Winning numbers'
+                                }
+                            }]
+                    },
+                    plugins: {
+                        colorschemes: {
+                            scheme: 'brewer.Paired12'
+                        }
+                    }
+                }
+            });
+            return [2 /*return*/];
+        });
+    });
+}
+function timeLapse(chartId, data) {
+    return __awaiter(this, void 0, void 0, function () {
+        var labels, ctx, dayIndex, timer;
+        return __generator(this, function (_a) {
+            labels = data.dates;
+            ctx = document.getElementById('mainChartCanvas');
+            if (mainChart)
+                mainChart.destroy();
+            mainChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                            label: "Timelapse",
+                            data: []
+                        }]
+                },
+                options: {
+                    responsive: true,
+                    animation: false,
+                    //onClick : ycChartClickFunction,
+                    title: {
+                        display: true,
+                        text: "Winning numbers time progression"
+                    },
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function (tooltipItem, data) {
+                                var i = tooltipItem.index;
+                                return JSON.stringify(data.datasets[0].data[i]);
+                            }
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                                type: 'time',
+                                ticks: setTicks(labels),
+                                time: {
+                                    displayFormats: {
+                                    //quarter: 'MMM YYYY'
+                                    }
+                                }
+                            }],
+                        yAxes: [{
+                                type: 'linear',
+                                position: 'left',
+                                ticks: setTicks([0, 75]),
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Winning numbers'
+                                }
+                            }]
+                    },
+                    plugins: {
+                        colorschemes: {
+                            scheme: 'brewer.Paired12'
+                        }
+                    }
+                }
+            });
+            dayIndex = 0;
+            timer = setInterval(function () {
+                var daywinners = data.drawings[data.dates[dayIndex]]; // first day of lotto drawing
+                var dayDataPoints = _.map(daywinners, function (winner) { return { x: data.dates[dayIndex], y: parseInt(winner) }; });
+                mainChart.data.datasets[0].data = dayDataPoints;
+                mainChart.update();
+                dayIndex++;
+                if (dayIndex == data.dates.length)
+                    clearTimeout(timer);
+            }, 10);
+            return [2 /*return*/];
+        });
     });
 }

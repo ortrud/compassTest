@@ -42,7 +42,9 @@ var unirest = require("unirest");
 //"https://data.ny.gov/api/views/5xaw-6ayf/rows.csv?accessType=DOWNLOAD&sorting=true";
 var DATA_URL = process.env.DATA_URL.replace(/"/g, '');
 console.log(process.env.DATA_URL);
-var data = {};
+var data = {}; // key - winning number, value - aray of winning dates
+var dates = []; // list of all draw dates
+var drawings = {}; // date : list of winners
 var req = unirest.get(DATA_URL).then(function (res) {
     if (res.error)
         throw new Error(res.error);
@@ -50,10 +52,13 @@ var req = unirest.get(DATA_URL).then(function (res) {
         var chunks = line.split(',');
         console.log(chunks);
         var dt = new Date(chunks[0]).getTime(); // using epoc as it takes less space than other representations
+        dates.push(dt);
         if (_.isNaN(dt))
             return "continue"; // skip header and empty lines
         if (chunks[1]) {
-            _.each(chunks[1].split(/ +/), function (c) {
+            var winners = chunks[1].split(/ +/);
+            drawings[dt] = winners;
+            _.each(winners, function (c) {
                 data[c] = data[c] || []; // initialize year array
                 data[c].push(dt);
             });
@@ -64,6 +69,7 @@ var req = unirest.get(DATA_URL).then(function (res) {
         _loop_1();
     }
     console.log(JSON.stringify(data, null, 4));
+    dates.sort(); // unlike lodash, Array.sort(), sorts aray in place
     app.listen(serverPort, function () {
         console.log("COMPASSTEST Service is listening on port " + serverPort);
         console.log("__dirname is " + __dirname);
@@ -74,13 +80,13 @@ app.use('/compasstest', express.static(path.join(__dirname, '')));
 var serverPort = 4000;
 app.get('/compasstest/getdata', function (req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var byDate;
+        var history;
         return __generator(this, function (_a) {
-            byDate = {};
+            history = {};
             _.each(data, function (v, k) {
-                byDate[k] = _.sortBy(v); // sort each numbers history by date
+                history[k] = _.sortBy(v); // sort each numbers history by date
             });
-            res.send(byDate);
+            res.send({ drawings: drawings, dates: dates, history: history });
             return [2 /*return*/];
         });
     });
