@@ -16,6 +16,8 @@ class Catalog extends React.Component {
     }
 
     handleClick(key,e) {
+		if (window.animationTimer) clearTimeout(window.animationTimer);  // stop all animation
+
         this.props.items[key].action( key, this.props.data);
         this.setState(state => ({
             selected: key

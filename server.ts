@@ -16,12 +16,14 @@ var req = unirest.get(DATA_URL).then( (res) => {    // get data from data.ny.gov
 
 	if (res.error) throw new Error(res.error);
 
+	fs.writeFileSync("data.csv",res.body);
+
 	for( var line of _.each(res.body.split(/\r*\n/))) {   // preload data and restrucrue it to { vinnumber : [dates it came up]}
 		let chunks = line.split(',');
 		console.log(chunks);
 		let dt = new Date(chunks[0]).getTime();   // using epoc as it takes less space than other representations
-		dates.push(dt);
 		if (_.isNaN(dt)) continue;   // skip header and empty lines
+		dates.push(dt);
 		if (chunks[1]) {	
 			let winners = chunks[1].split(/ +/);
 			drawings[dt] = winners;
@@ -33,6 +35,7 @@ var req = unirest.get(DATA_URL).then( (res) => {    // get data from data.ny.gov
 	}
 	console.log(JSON.stringify(data,null,4));
 	dates.sort();  // unlike lodash, Array.sort(), sorts aray in place
+
 
 	app.listen(serverPort, function () {  // once data is ready, start listening
 		console.log(`COMPASSTEST Service is listening on port ${serverPort}`);

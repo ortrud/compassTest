@@ -39,11 +39,13 @@ var mainChart;
 var n;
 // catalog of charts
 var chartCatalog = [
-    { key: 0, text: "Occurence totals", action: function (n, d) { occurenceTotals(n, d); } },
+    { key: 0, text: "Win totals", action: function (n, d) { occurenceTotals(n, d); } },
     { key: 1, text: "Occurence details", action: function (n, d) { occurenceDetails(n, d); } },
-    { key: 2, text: "Time lapse", action: function (n, d) { timeLapse(n, d); } }, // x-date, y-winning numbers
-    //{key : 2, text : `History of all numbers`, action : function(n,d) { numberHistory(n,d)} });
+    { key: 2, text: "Time lapse", action: function (n, d) { timeLapse(n, d); } },
+    { key: 3, text: "Number Aging", action: function (n, d) { numberAgingDays(n, d); } },
+    { key: 4, text: "Number Aging (1-70)", action: function (n, d) { numberAgingDraws(n, d); } }, // x-winner, y-age in draws
 ];
+//{key : 3, text : "History of all numbers", action : function(n,d) { numberHistory(n,d)} },
 // for (n=1; n <=75; n++) {
 // 	chartCatalog.push( {key : n, text : `History of number ${n}`, action : function(n,d) { numberHistory(n,d)} });
 // }
@@ -66,6 +68,30 @@ $(document).ready(function () {
         });
     });
 });
+function getdata() {
+    return __awaiter(this, void 0, void 0, function () {
+        var data;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, $.ajax({
+                        url: apiBase + "getdata"
+                    })["catch"](function (error) {
+                        console.error("getdata error", error);
+                    })];
+                case 1:
+                    data = _a.sent();
+                    console.log(data);
+                    return [2 /*return*/, data];
+            }
+        });
+    });
+}
+function setTicks(list) {
+    return {
+        max: _.max(list),
+        min: _.min(list)
+    };
+}
 function numberHistory(number, history) {
     var labels = history[sprintf("%02d", number)]; // prepend 0 to single digit numbers
     //let labels = history[number];
@@ -134,62 +160,62 @@ function numberHistory(number, history) {
         }
     });
 }
-function setTicks(list) {
-    return {
-        max: _.max(list),
-        min: _.min(list)
-    };
-}
 function occurenceTotals(chartId, data) {
-    var dataCooked = []; // [ [num, occurence ]]   - to allow sorting by either number or by occurence
-    _.each(data.history, function (list, num) {
-        dataCooked.push({ num: num, occurence: list.length });
-    });
-    var sorted = _.orderBy(dataCooked, ['num'], ['desc']); // sort numbers in descending order
-    var values = _.map(sorted, function (item) { return item.occurence; });
-    var labels = _.map(sorted, function (item) { return item.num; });
-    console.log("labels", labels);
-    console.log("values", values);
-    var ctx = document.getElementById('mainChartCanvas');
-    if (mainChart)
-        mainChart.destroy();
-    mainChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Winning Numbers',
-                    data: values,
-                    borderWidth: 1
+    return __awaiter(this, void 0, void 0, function () {
+        var dataCooked, sorted, values, labels, ctx;
+        return __generator(this, function (_a) {
+            dataCooked = [];
+            _.each(data.history, function (list, num) {
+                dataCooked.push({ num: num, occurence: list.length });
+            });
+            sorted = _.orderBy(dataCooked, ['num'], ['desc']);
+            values = _.map(sorted, function (item) { return item.occurence; });
+            labels = _.map(sorted, function (item) { return item.num; });
+            console.log("labels", labels);
+            console.log("values", values);
+            ctx = document.getElementById('mainChartCanvas');
+            if (mainChart)
+                mainChart.destroy();
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Winning Numbers',
+                            data: values,
+                            borderWidth: 1
+                        },
+                    ]
                 },
-            ]
-        },
-        options: {
-            responsive: true,
-            title: {
-                display: true,
-                text: "Winning numbers occurence in descending number order"
-            },
-            legend: {
-                position: 'bottom'
-            },
-            scales: {
-                yAxes: [{
-                        type: 'linear',
-                        position: 'left',
-                        scaleLabel: {
-                            display: true,
-                            labelString: 'Number of occurences'
+                options: {
+                    responsive: true,
+                    title: {
+                        display: true,
+                        text: "Winning numbers occurence in descending number order"
+                    },
+                    legend: {
+                        position: 'bottom'
+                    },
+                    scales: {
+                        yAxes: [{
+                                type: 'linear',
+                                position: 'left',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Number of occurences'
+                                }
+                            }]
+                    },
+                    plugins: {
+                        colorschemes: {
+                            scheme: 'brewer.Paired12'
                         }
-                    }]
-            },
-            plugins: {
-                colorschemes: {
-                    scheme: 'brewer.Paired12'
+                    }
                 }
-            }
-        }
+            });
+            return [2 /*return*/];
+        });
     });
 }
 function occurenceDetails(chartId, data) {
@@ -268,7 +294,7 @@ function occurenceDetails(chartId, data) {
 }
 function timeLapse(chartId, data) {
     return __awaiter(this, void 0, void 0, function () {
-        var labels, ctx, dayIndex, timer;
+        var labels, ctx, dayIndex;
         return __generator(this, function (_a) {
             labels = data.dates;
             ctx = document.getElementById('mainChartCanvas');
@@ -330,16 +356,152 @@ function timeLapse(chartId, data) {
                 }
             });
             dayIndex = 0;
-            timer = setInterval(function () {
+            window.animationTimer = setInterval(function () {
                 var daywinners = data.drawings[data.dates[dayIndex]]; // first day of lotto drawing
                 var dayDataPoints = _.map(daywinners, function (winner) { return { x: data.dates[dayIndex], y: parseInt(winner) }; });
                 mainChart.data.datasets[0].data = dayDataPoints;
                 mainChart.update();
                 dayIndex++;
                 if (dayIndex == data.dates.length)
-                    clearTimeout(timer);
+                    clearTimeout(window.animationTimer);
             }, 10);
             return [2 /*return*/];
         });
     });
+}
+function numberAgingDays(chartId, data) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dataCooked, ms2days, sorted, values, labels, ctx;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, getdata()];
+                case 1:
+                    data = _a.sent();
+                    dataCooked = [];
+                    ms2days = 1000 * 3600 * 24;
+                    _.each(data.history, function (list, num) {
+                        dataCooked.push({ num: num, age: Math.floor((new Date().getTime() - new Date(list.pop()).getTime()) / ms2days) }); // age is in days
+                    });
+                    sorted = _.orderBy(dataCooked, ['age'], ['desc']);
+                    values = _.map(sorted, function (item) { return item.age; });
+                    labels = _.map(sorted, function (item) { return item.num; });
+                    console.log("labels", labels);
+                    console.log("values", values);
+                    ctx = document.getElementById('mainChartCanvas');
+                    if (mainChart)
+                        mainChart.destroy();
+                    mainChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Winning Number Age (in days)',
+                                    data: values,
+                                    borderWidth: 1
+                                },
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            title: {
+                                display: true,
+                                text: "Winning numbers age in descending number order"
+                            },
+                            legend: {
+                                position: 'bottom'
+                            },
+                            scales: {
+                                yAxes: [{
+                                        type: 'linear',
+                                        position: 'left',
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Age in days'
+                                        }
+                                    }]
+                            },
+                            plugins: {
+                                colorschemes: {
+                                    scheme: 'brewer.Paired12'
+                                }
+                            }
+                        }
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function numberAgingDraws(chartId, data) {
+    return __awaiter(this, void 0, void 0, function () {
+        var datesLatestFirst, dataCooked, sorted, values, labels, ctx;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, getdata()];
+                case 1:
+                    data = _a.sent();
+                    datesLatestFirst = _.reverse(data.dates);
+                    dataCooked = [];
+                    _.each(data.history, function (list, num) {
+                        if (num < "70")
+                            dataCooked.push({ num: num, age: ageInDraws(datesLatestFirst, list.pop()) }); // list.pop() is the last time the numebr won
+                    });
+                    sorted = _.orderBy(dataCooked, ['age'], ['desc']);
+                    values = _.map(sorted, function (item) { return item.age; });
+                    labels = _.map(sorted, function (item) { return item.num; });
+                    console.log("labels", labels);
+                    console.log("values", values);
+                    ctx = document.getElementById('mainChartCanvas');
+                    if (mainChart)
+                        mainChart.destroy();
+                    mainChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Winning Number Age (in draws)',
+                                    data: values,
+                                    borderWidth: 1
+                                },
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            title: {
+                                display: true,
+                                text: "Winning numbers age in descending number order"
+                            },
+                            legend: {
+                                position: 'bottom'
+                            },
+                            scales: {
+                                yAxes: [{
+                                        type: 'linear',
+                                        position: 'left',
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Age in draws'
+                                        }
+                                    }]
+                            },
+                            plugins: {
+                                colorschemes: {
+                                    scheme: 'brewer.Paired12'
+                                }
+                            }
+                        }
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function ageInDraws(list, dt) {
+    for (var i = 0; i < list.length; i++) {
+        if (list[i] == dt)
+            return i; // number of draws ago
+    }
+    return undefined; // can't happen
 }

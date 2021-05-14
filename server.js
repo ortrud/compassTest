@@ -48,13 +48,14 @@ var drawings = {}; // date : list of winners
 var req = unirest.get(DATA_URL).then(function (res) {
     if (res.error)
         throw new Error(res.error);
+    fs.writeFileSync("data.csv", res.body);
     var _loop_1 = function () {
         var chunks = line.split(',');
         console.log(chunks);
         var dt = new Date(chunks[0]).getTime(); // using epoc as it takes less space than other representations
-        dates.push(dt);
         if (_.isNaN(dt))
             return "continue"; // skip header and empty lines
+        dates.push(dt);
         if (chunks[1]) {
             var winners = chunks[1].split(/ +/);
             drawings[dt] = winners;
