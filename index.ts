@@ -11,11 +11,11 @@ var n: number;
 let chartCatalog = [
 	{key : 0, text : "Win totals", action : function (d) { occurenceTotals(d) }  },  // x-wunning number, y-occurences
 	{key : 1, text : "Occurence details", action : function (d) { occurenceDetails(d) }  },  // x-date, y-winning number
-	{key : 2, text : "Time lapse", action : function (d) { timeLapse(d) }  },  // x-date, y-winning numbers
+	{key : 2, text : "Time slice", action : function (d) { timeLapse(d) }  },  // x-date, y-winning numbers
 	{key : 3, text : "Number Aging", action : function (d) { numberAgingDays(d) }  },  // x-winner, y-age in days
 	{key : 4, text : "Number Aging (1-70)", action : function (d) { numberAgingDraws(d) }  },  // x-winner, y-age in draws
-	{key : 5, text : "10 oldest and 10 youngest (1-70)", action : function (d) { oldestAndYoungest(d) }  },  // x-winner, y-age in draws
-	{key : 6, text : "Before last drawing", action : function (d) { beforeLastDrawing(d) }  },  // x-winner, y-age in draws
+	{key : 5, text : "Before last drawing", action : function (d) { beforeLastDrawing(d) }  },  // x-winner, y-age in draws
+	{key : 6, text : "After last drawing", action : function (d) { oldestAndYoungest(d) }  },  // x-winner, y-age in draws
 ]
 //{key : 3, text : "History of all numbers", action : function(n,d) { numberHistory(n,d)} },
 // for (n=1; n <=75; n++) {
@@ -36,7 +36,7 @@ $(document).ready(async function () {
 
 });
 
-function buildNumbersHistory(drawings) {
+function buildNumbersHistory(drawings) {  
 	let numbersHistory = {};   // {winningnumber : list of dates it won on }
 	_.each(drawings, d => {
 		_.each(d[1], n => {   // d[1] is aray of wining numbers
@@ -47,12 +47,6 @@ function buildNumbersHistory(drawings) {
 	return numbersHistory;
 }
 
-function setTicks(list) {   // min and max of the list
-	return {
-		max: _.max(list),
-		min: _.min(list)
-	}
-}
 
 function eachNumberHistory (number,history) {
 
@@ -274,7 +268,7 @@ async function occurenceDetails(data) {	//all winning numbers by date
 
 async function timeLapse(data) {	//all winning numbers by date
 
-	let labels = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
+	let dates = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
 
 	
 	var ctx = document.getElementById('mainChartCanvas') as HTMLCanvasElement;
@@ -283,7 +277,7 @@ async function timeLapse(data) {	//all winning numbers by date
 		type: 'scatter',
 		
 		data: {
-			labels:labels,
+			labels:dates,
 			datasets: [{
 				label : "Timelapse",
 				data : []
@@ -299,7 +293,8 @@ async function timeLapse(data) {	//all winning numbers by date
 				text : `Winning numbers time progression`,
 			},
 			legend: {
-				position : 'bottom'
+				position : 'bottom',
+				display : false
 			},
 			tooltips: {
 				callbacks: {
@@ -309,10 +304,16 @@ async function timeLapse(data) {	//all winning numbers by date
 					},
 				}
 			},
+
+			elements : {
+				point : {
+					radius :2
+				}
+			},
 			scales: {
 				xAxes: [{
 					type: 'time',
-					ticks: setTicks(labels),
+					ticks: setTicks(dates),
 					time: {
 						displayFormats: {
 							//quarter: 'MMM YYYY'
@@ -331,26 +332,35 @@ async function timeLapse(data) {	//all winning numbers by date
 				}],
 
 			},
-			plugins: {
-				colorschemes: {
-					scheme: 'brewer.Paired12'
-				}
-			}
+			// plugins: {
+			// 	colorschemes: {
+			// 		scheme: 'brewer.Paired12'
+			// 	}
+			// }
 		}
 	});
 	
-	// update datasets and refresh chart one drawing date at a timer
+	// update datasets and refresh chart one drawing date at a time
 	let dayIndex =0;
 	window.animationTimer = setInterval( function() {
-		let daywinners = _.find(data, d => d[0] == labels[dayIndex])[1];   // day of lotto drawing
+		let daywinners = _.find(data, d => d[0] == dates[dayIndex])[1];   // day of lotto drawing
 
-		let dayDataPoints = _.map(daywinners, winner => { return {x : labels[dayIndex], y : parseInt(winner)}})
-		mainChart.data.datasets[0].data = dayDataPoints;
+		let dayDataPoints = _.map(daywinners, winner => { return {x : dates[dayIndex], y : parseInt(winner)}})
+		mainChart.data.datasets.push({
+			data : dayDataPoints, 
+			label : dates[dayIndex],
+			backgroundColor: "black",
+			borderColor: "black",
+		});
+
+		if (dayIndex > 60) mainChart.data.datasets.shift();   // remove older data from chart
 		
 		mainChart.update();
 		dayIndex++;
-		if (dayIndex == labels.length) clearTimeout(window.animationTimer);
+		if (dayIndex == dates.length) clearTimeout(window.animationTimer);
 	}, 10);
+
+
 }
 
 async function numberAgingDays(data) {
@@ -554,4 +564,11 @@ function ageInDraws(list,dt) {
 		if (list[i] == dt) return i;   // number of draws ago
 	}
 	return undefined;  // can't happen
+}
+
+function setTicks(list) {   // min and max of the list
+	return {
+		max: _.max(list),
+		min: _.min(list)
+	}
 }

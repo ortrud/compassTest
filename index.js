@@ -41,11 +41,11 @@ var n;
 var chartCatalog = [
     { key: 0, text: "Win totals", action: function (d) { occurenceTotals(d); } },
     { key: 1, text: "Occurence details", action: function (d) { occurenceDetails(d); } },
-    { key: 2, text: "Time lapse", action: function (d) { timeLapse(d); } },
+    { key: 2, text: "Time slice", action: function (d) { timeLapse(d); } },
     { key: 3, text: "Number Aging", action: function (d) { numberAgingDays(d); } },
     { key: 4, text: "Number Aging (1-70)", action: function (d) { numberAgingDraws(d); } },
-    { key: 5, text: "10 oldest and 10 youngest (1-70)", action: function (d) { oldestAndYoungest(d); } },
-    { key: 6, text: "Before last drawing", action: function (d) { beforeLastDrawing(d); } }, // x-winner, y-age in draws
+    { key: 5, text: "Before last drawing", action: function (d) { beforeLastDrawing(d); } },
+    { key: 6, text: "After last drawing", action: function (d) { oldestAndYoungest(d); } }, // x-winner, y-age in draws
 ];
 //{key : 3, text : "History of all numbers", action : function(n,d) { numberHistory(n,d)} },
 // for (n=1; n <=75; n++) {
@@ -79,12 +79,6 @@ function buildNumbersHistory(drawings) {
         });
     });
     return numbersHistory;
-}
-function setTicks(list) {
-    return {
-        max: _.max(list),
-        min: _.min(list)
-    };
 }
 function eachNumberHistory(number, history) {
     var labels = history[sprintf("%02d", number)]; // prepend 0 to single digit numbers
@@ -291,16 +285,16 @@ function occurenceDetails(data) {
 }
 function timeLapse(data) {
     return __awaiter(this, void 0, void 0, function () {
-        var labels, ctx, dayIndex;
+        var dates, ctx, dayIndex;
         return __generator(this, function (_a) {
-            labels = _.sortBy(_.map(data, function (d) { return d[0]; }));
+            dates = _.sortBy(_.map(data, function (d) { return d[0]; }));
             ctx = document.getElementById('mainChartCanvas');
             if (mainChart)
                 mainChart.destroy();
             mainChart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
-                    labels: labels,
+                    labels: dates,
                     datasets: [{
                             label: "Timelapse",
                             data: []
@@ -315,7 +309,8 @@ function timeLapse(data) {
                         text: "Winning numbers time progression"
                     },
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        display: false
                     },
                     tooltips: {
                         callbacks: {
@@ -325,10 +320,15 @@ function timeLapse(data) {
                             }
                         }
                     },
+                    elements: {
+                        point: {
+                            radius: 2
+                        }
+                    },
                     scales: {
                         xAxes: [{
                                 type: 'time',
-                                ticks: setTicks(labels),
+                                ticks: setTicks(dates),
                                 time: {
                                     displayFormats: {
                                     //quarter: 'MMM YYYY'
@@ -344,22 +344,24 @@ function timeLapse(data) {
                                     labelString: 'Winning numbers'
                                 }
                             }]
-                    },
-                    plugins: {
-                        colorschemes: {
-                            scheme: 'brewer.Paired12'
-                        }
                     }
                 }
             });
             dayIndex = 0;
             window.animationTimer = setInterval(function () {
-                var daywinners = _.find(data, function (d) { return d[0] == labels[dayIndex]; })[1]; // day of lotto drawing
-                var dayDataPoints = _.map(daywinners, function (winner) { return { x: labels[dayIndex], y: parseInt(winner) }; });
-                mainChart.data.datasets[0].data = dayDataPoints;
+                var daywinners = _.find(data, function (d) { return d[0] == dates[dayIndex]; })[1]; // day of lotto drawing
+                var dayDataPoints = _.map(daywinners, function (winner) { return { x: dates[dayIndex], y: parseInt(winner) }; });
+                mainChart.data.datasets.push({
+                    data: dayDataPoints,
+                    label: dates[dayIndex],
+                    backgroundColor: "black",
+                    borderColor: "black"
+                });
+                if (dayIndex > 60)
+                    mainChart.data.datasets.shift(); // remove older data from chart
                 mainChart.update();
                 dayIndex++;
-                if (dayIndex == labels.length)
+                if (dayIndex == dates.length)
                     clearTimeout(window.animationTimer);
             }, 10);
             return [2 /*return*/];
@@ -545,4 +547,10 @@ function ageInDraws(list, dt) {
             return i; // number of draws ago
     }
     return undefined; // can't happen
+}
+function setTicks(list) {
+    return {
+        max: _.max(list),
+        min: _.min(list)
+    };
 }
