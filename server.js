@@ -42,35 +42,45 @@ var unirest = require("unirest");
 //"https://data.ny.gov/api/views/5xaw-6ayf/rows.csv?accessType=DOWNLOAD&sorting=true";
 var DATA_URL = process.env.DATA_URL.replace(/"/g, '');
 console.log(process.env.DATA_URL);
-var data = {}; // key - winning number, value - aray of winning dates
-var dates = []; // list of all draw dates
-var drawings = {}; // date : list of winners
+// let data = {};   // key - winning number, value - aray of winning dates
+// let dates = [];  // list of all draw dates
+var drawings = []; // [ epoc, [winnersdate : list of winners
 var req = unirest.get(DATA_URL).then(function (res) {
     if (res.error)
         throw new Error(res.error);
     fs.writeFileSync("data.csv", res.body);
-    var _loop_1 = function () {
+    var lines = res.body.split(/\r*\n/);
+    for (var _i = 0, _a = _.each(lines); _i < _a.length; _i++) { // preload data and load drawings
+        var line = _a[_i];
         var chunks = line.split(',');
         console.log(chunks);
-        var dt = new Date(chunks[0]).getTime(); // using epoc as it takes less space than other representations
+        var dt = new Date(chunks[0]).getTime(); // using epoc as date is easier to order and takes less space than other representations
         if (_.isNaN(dt))
-            return "continue"; // skip header and empty lines
-        dates.push(dt);
-        if (chunks[1]) {
+            continue; // skip header and empty lines
+        if (chunks[1]) { // chunks[1] is space seprateed list of winners
             var winners = chunks[1].split(/ +/);
-            drawings[dt] = winners;
-            _.each(winners, function (c) {
-                data[c] = data[c] || []; // initialize year array
-                data[c].push(dt);
-            });
+            drawings.push([dt, winners]);
         }
-    };
-    for (var _i = 0, _a = _.each(res.body.split(/\r*\n/)); _i < _a.length; _i++) {
-        var line = _a[_i];
-        _loop_1();
     }
-    console.log(JSON.stringify(data, null, 4));
-    dates.sort(); // unlike lodash, Array.sort(), sorts aray in place
+    drawings.sort(function (a, b) { return a[0] - b[0]; }); // sort by drawing date (latest -first)
+    console.log(drawings);
+    // for( var line of _.each(lines)) {   // preload data and restrucrue it to { vinnumber : [dates it came up]}
+    // 	let chunks = line.split(',');
+    // 	console.log(chunks);
+    // 	let dt = new Date(chunks[0]).getTime();   // using epoc as it takes less space than other representations
+    // 	if (_.isNaN(dt)) continue;   // skip header and empty lines
+    // 	dates.push(dt);
+    // 	if (chunks[1]) {	
+    // 		let winners = chunks[1].split(/ +/);
+    // 		drawings[dt] = winners;
+    // 		_.each(winners, c => {   // column 2 (chunks[1]) is a list of space separated wining numbers
+    // 			data[c] = data[c] || [];   // initialize year array
+    // 			data[c].push(dt);
+    // 		})
+    // 	}
+    // }
+    // console.log(JSON.stringify(data,null,4));
+    // dates.sort();  // unlike lodash, Array.sort(), sorts aray in place
     app.listen(serverPort, function () {
         console.log("COMPASSTEST Service is listening on port " + serverPort);
         console.log("__dirname is " + __dirname);
@@ -81,13 +91,13 @@ app.use('/compasstest', express.static(path.join(__dirname, '')));
 var serverPort = 4000;
 app.get('/compasstest/getdata', function (req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var history;
         return __generator(this, function (_a) {
-            history = {};
-            _.each(data, function (v, k) {
-                history[k] = _.sortBy(v); // sort each numbers history by date
-            });
-            res.send({ drawings: drawings, dates: dates, history: history });
+            // let history = {};
+            // _.each( data, (v,k) => {
+            // 	history[k] = _.sortBy(v);   // sort each numbers history by date
+            // })
+            //res.send({drawings : drawings, dates:dates, history:history}); 
+            res.send(drawings);
             return [2 /*return*/];
         });
     });

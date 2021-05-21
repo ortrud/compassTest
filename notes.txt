@@ -1,0 +1,21 @@
+### Visualize Winning Numbers
+
+1. Load the data async into the application and format the data to make it possible to visualize and manipulate in the code
+2. Aggregate each number from the "Winning Numbers" column and display the numbers in descending order with the number and the occurrences.
+3. Add a limit to only show top 10, 20.
+4. Add filters to limit the results to a given year
+5. Add sorting to sort by occurrences or winning number
+
+### Package it in a Docker container
+- There should be a Dockerfile coming with your solution that would contain application running on port 4000. 
+- It should accept the CSV URL as an environment variable named DATA_URL
+
+## Evaluation
+
+### What we will be looking at:
+1. Solution should be correct, for any output (not just the one we specify by default)
+2. Scalability. What if the file downloaded is huge?
+3. Error handling (all sorts of)
+4. Testing
+5. Documentation
+6. Best practices, project layout, etc

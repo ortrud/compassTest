@@ -9,11 +9,13 @@ var n: number;
 
 // catalog of charts
 let chartCatalog = [
-	{key : 0, text : "Win totals", action : function (n,d) { occurenceTotals(n, d) }  },  // x-wunning number, y-occurences
-	{key : 1, text : "Occurence details", action : function (n,d) { occurenceDetails(n, d) }  },  // x-date, y-winning number
-	{key : 2, text : "Time lapse", action : function (n,d) { timeLapse(n, d) }  },  // x-date, y-winning numbers
-	{key : 3, text : "Number Aging", action : function (n,d) { numberAgingDays(n, d) }  },  // x-winner, y-age in days
-	{key : 4, text : "Number Aging (1-70)", action : function (n,d) { numberAgingDraws(n, d) }  },  // x-winner, y-age in draws
+	{key : 0, text : "Win totals", action : function (d) { occurenceTotals(d) }  },  // x-wunning number, y-occurences
+	{key : 1, text : "Occurence details", action : function (d) { occurenceDetails(d) }  },  // x-date, y-winning number
+	{key : 2, text : "Time lapse", action : function (d) { timeLapse(d) }  },  // x-date, y-winning numbers
+	{key : 3, text : "Number Aging", action : function (d) { numberAgingDays(d) }  },  // x-winner, y-age in days
+	{key : 4, text : "Number Aging (1-70)", action : function (d) { numberAgingDraws(d) }  },  // x-winner, y-age in draws
+	{key : 5, text : "10 oldest and 10 youngest (1-70)", action : function (d) { oldestAndYoungest(d) }  },  // x-winner, y-age in draws
+	{key : 6, text : "Before last drawing", action : function (d) { beforeLastDrawing(d) }  },  // x-winner, y-age in draws
 ]
 //{key : 3, text : "History of all numbers", action : function(n,d) { numberHistory(n,d)} },
 // for (n=1; n <=75; n++) {
@@ -21,7 +23,7 @@ let chartCatalog = [
 // }
 
 $(document).ready(async function () {
-	//get data from server
+
 	let data = await $.ajax({
 		url:`${apiBase}getdata`,
 		//headers: {  },
@@ -34,16 +36,15 @@ $(document).ready(async function () {
 
 });
 
-async function getdata() {
-	//get data from server
-	let data = await $.ajax({
-		url: `${apiBase}getdata`,
-		//headers: {  },
-	}).catch(error => {
-		console.error("getdata error", error);
-	});
-	console.log(data);
-	return data;
+function buildNumbersHistory(drawings) {
+	let numbersHistory = {};   // {winningnumber : list of dates it won on }
+	_.each(drawings, d => {
+		_.each(d[1], n => {   // d[1] is aray of wining numbers
+			numbersHistory[n] = numbersHistory[n] || [];   // initialize date array
+			numbersHistory[n].push(d[0]);  // d[0] is derawing date
+		})
+	})
+	return numbersHistory;
 }
 
 function setTicks(list) {   // min and max of the list
@@ -53,7 +54,7 @@ function setTicks(list) {   // min and max of the list
 	}
 }
 
-function numberHistory (number,history) {
+function eachNumberHistory (number,history) {
 
 	let labels = history[sprintf("%02d", number)];   // prepend 0 to single digit numbers
 	//let labels = history[number];
@@ -127,11 +128,14 @@ function numberHistory (number,history) {
 	});
 }
 
-async function occurenceTotals (chartId, data) {
+async function occurenceTotals (data) {
+
+	let numbersHistory = buildNumbersHistory(data);
 	
 	let dataCooked = [];   // [ [num, occurence ]]   - to allow sorting by either number or by occurence
-	_.each(data.history, (list,num) =>{
-		dataCooked.push({num : num, occurence : list.length});
+	_.each(numbersHistory, (v,k) =>{
+		let list:any[] = v;
+		dataCooked.push({num : k, occurence : list.length});
 	})
 	
 	let sorted = _.orderBy(dataCooked,['num'], ['desc']);   // sort numbers in descending order
@@ -187,13 +191,17 @@ async function occurenceTotals (chartId, data) {
 	});
 }
 
-async function occurenceDetails(chartId,data) {	//all winning numbers by date
+async function occurenceDetails(data) {	//all winning numbers by date
 
-	let labels = data.dates;   //chartjs x - all lotto dates
+	let labels = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
+
+	let numbersHistory = buildNumbersHistory(data);
+
+
 	let datasets = [];   //chartjs datasets
 	let yAxes = [];   
 
-	_.each(data.history, (dates,winner) =>{
+	_.each(numbersHistory, (dates,winner) =>{
 
 			datasets.push(
 				{
@@ -264,9 +272,10 @@ async function occurenceDetails(chartId,data) {	//all winning numbers by date
 	});
 }
 
-async function timeLapse(chartId,data) {	//all winning numbers by date
+async function timeLapse(data) {	//all winning numbers by date
 
-	let labels = data.dates;   //chartjs x - all lotto dates
+	let labels = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
+
 	
 	var ctx = document.getElementById('mainChartCanvas') as HTMLCanvasElement;
 	if (mainChart) mainChart.destroy();
@@ -333,23 +342,25 @@ async function timeLapse(chartId,data) {	//all winning numbers by date
 	// update datasets and refresh chart one drawing date at a timer
 	let dayIndex =0;
 	window.animationTimer = setInterval( function() {
-		let daywinners = data.drawings[data.dates[dayIndex]];   // first day of lotto drawing
+		let daywinners = _.find(data, d => d[0] == labels[dayIndex])[1];   // day of lotto drawing
 
-		let dayDataPoints = _.map(daywinners, winner => { return {x : data.dates[dayIndex], y : parseInt(winner)}})
+		let dayDataPoints = _.map(daywinners, winner => { return {x : labels[dayIndex], y : parseInt(winner)}})
 		mainChart.data.datasets[0].data = dayDataPoints;
 		
 		mainChart.update();
 		dayIndex++;
-		if (dayIndex == data.dates.length) clearTimeout(window.animationTimer);
+		if (dayIndex == labels.length) clearTimeout(window.animationTimer);
 	}, 10);
 }
 
-async function numberAgingDays(chartId, data) {
-	data = await getdata();
+async function numberAgingDays(data) {
+
+	let numbersHistory = buildNumbersHistory(data);
 	
 	let dataCooked = [];   // {num, age_of_last_occurence }   
 	const ms2days = 1000 * 3600 * 24;
-	_.each(data.history, (list,num) =>{
+	_.each(numbersHistory, (v,num) =>{
+		let list:any[] = v;
 		dataCooked.push({num : num, age : Math.floor( (new Date().getTime() - new Date(list.pop()).getTime()) / ms2days)});   // age is in days
 	})
 	
@@ -406,14 +417,76 @@ async function numberAgingDays(chartId, data) {
 	});
 }
 
-async function numberAgingDraws(chartId, data) {
+function oldestAndYoungest(data) {
+	let numbersHistory = buildNumbersHistory(data);
 
-	data = await getdata();
+	let dates = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
 
-	
-	let datesLatestFirst = _.reverse(data.dates);   // for ease of processing
+	let datesLatestFirst = _.reverse(dates);   // for ease of processing
 	let dataCooked = [];   // {num, age_of_last_occurence in number of draws since the lat win}   
-	_.each(data.history, (list,num) =>{
+	_.each(numbersHistory, (v,num) =>{
+		let list:any[] = v;
+		if (num < "70") dataCooked.push({num : num, age : ageInDraws(datesLatestFirst, list.pop()) });  // list.pop() is the last time the numebr won
+	})
+	
+	let sorted = _.orderBy(dataCooked,['age'], ['desc']);   // sort numbers in descending age order
+
+	let filtered = [];
+	for (var i=0; i< sorted.length; i++) {
+		if (i < 10 || i >= sorted.length - 10) filtered.push(sorted[i]);
+	}
+
+	let values = _.map(filtered, item => item.age);
+	let labels = _.map(filtered, item => item.num);
+
+	console.log("labels", labels);
+	console.log("values", values);
+
+	showAgingChart(labels,values);
+}
+
+function beforeLastDrawing(data) {
+
+	let lastDraw = data.pop();
+	let numbersHistory = buildNumbersHistory(data);
+	data.push(lastDraw);
+	
+
+	let dates = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
+
+	let datesLatestFirst = _.reverse(dates);   // for ease of processing
+	let dataCooked = [];   // {num, age_of_last_occurence in number of draws since the lat win}   
+	_.each(numbersHistory, (v,num) =>{
+		let list:any[] = v;
+		if (num < "70") dataCooked.push({num : num, age : ageInDraws(datesLatestFirst, list.pop()) });  // list.pop() is the last time the numebr won
+	})
+	
+	let sorted = _.orderBy(dataCooked,['age'], ['desc']);   // sort numbers in descending age order
+
+	let filtered = [];
+	for (var i=0; i< sorted.length; i++) {
+		if (i < 10 || i >= sorted.length - 10) filtered.push(sorted[i]);
+	}
+
+	let values = _.map(filtered, item => item.age);
+	let labels = _.map(filtered, item => item.num);
+
+	console.log("labels", labels);
+	console.log("values", values);
+
+	showAgingChart(labels,values);
+}
+
+async function numberAgingDraws(data) {
+
+	let numbersHistory = buildNumbersHistory(data);
+
+	let dates = _.sortBy(_.map(data, d => d[0]));   //chartjs x - all lotto dates
+
+	let datesLatestFirst = _.reverse(dates);   // for ease of processing
+	let dataCooked = [];   // {num, age_of_last_occurence in number of draws since the lat win}   
+	_.each(numbersHistory, (v,num) =>{
+		let list:any[] = v;
 		if (num < "70") dataCooked.push({num : num, age : ageInDraws(datesLatestFirst, list.pop()) });  // list.pop() is the last time the numebr won
 	})
 	
@@ -425,6 +498,12 @@ async function numberAgingDraws(chartId, data) {
 	console.log("labels", labels);
 	console.log("values", values);
 
+	showAgingChart(labels,values);
+}
+
+function showAgingChart(labels,values) {
+
+
 	var ctx = document.getElementById('mainChartCanvas') as HTMLCanvasElement;
 	if (mainChart) mainChart.destroy();
 	mainChart = new Chart(ctx, {
@@ -434,7 +513,7 @@ async function numberAgingDraws(chartId, data) {
 			labels:labels,
 			datasets: [
 				{
-					label: 'Winning Number Age (in draws)',
+					label: 'Winning Number Age (in number of draws since the last occurence)',
 					data: values,
 					borderWidth: 1
 				},

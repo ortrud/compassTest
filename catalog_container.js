@@ -9,7 +9,7 @@ class Catalog extends React.Component {
 
         this.listItems = props.items.map((line) =>
             <li key={line.key}>
-            <a href="#"  onClick={this.handleClick.bind(this,line.key)}>{line.text}</a>
+            <a href="#" onClick={this.handleClick.bind(this,line.key)}>{line.text}</a>
             </li>)
 
         this.handleClick = this.handleClick.bind(this);
@@ -18,17 +18,13 @@ class Catalog extends React.Component {
     handleClick(key,e) {
 		if (window.animationTimer) clearTimeout(window.animationTimer);  // stop all animation
 
-        this.props.items[key].action( key, this.props.data);
+        this.props.items[key].action(this.props.data);
         this.setState(state => ({
             selected: key
         }));
     }
 
     render() {
-        // if (this.state.selected) {
-        //     return 'OK!';
-        // }
-
         return (
                 <ul>{this.listItems}</ul>
         );  

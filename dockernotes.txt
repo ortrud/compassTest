@@ -1,0 +1,24 @@
+   39  vim Dockerfil
+
+   41  vim .dockerignore
+
+   43  docker build --tag node-docker .
+   44  docker images
+
+   46  docker tag node-docker:latest node-docker:v1.0.0
+
+   48  docker rmi node-docker:latest
+   49  vim Dockerfile 
+   50  docker build --tag compasstest .
+   53  docker run -d --publish 8000:8000 node-docker-slim
+   54  docker ps
+   55  docker stop vigorous_booth 
+   57  docker ps -a
+   58  docker restart vigorous_booth 
+   64  docker rm vigorous_booth 
+   65  docker ps -a
+   74  docker exec -it 048e01d1ded9 /bin/bash
+   docker logs <container name>
+
+   docker build --tag compasstestgit .
+   docker run -d --publish 4001:4000 compasstestgit

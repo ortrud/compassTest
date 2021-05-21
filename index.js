@@ -39,11 +39,13 @@ var mainChart;
 var n;
 // catalog of charts
 var chartCatalog = [
-    { key: 0, text: "Win totals", action: function (n, d) { occurenceTotals(n, d); } },
-    { key: 1, text: "Occurence details", action: function (n, d) { occurenceDetails(n, d); } },
-    { key: 2, text: "Time lapse", action: function (n, d) { timeLapse(n, d); } },
-    { key: 3, text: "Number Aging", action: function (n, d) { numberAgingDays(n, d); } },
-    { key: 4, text: "Number Aging (1-70)", action: function (n, d) { numberAgingDraws(n, d); } }, // x-winner, y-age in draws
+    { key: 0, text: "Win totals", action: function (d) { occurenceTotals(d); } },
+    { key: 1, text: "Occurence details", action: function (d) { occurenceDetails(d); } },
+    { key: 2, text: "Time lapse", action: function (d) { timeLapse(d); } },
+    { key: 3, text: "Number Aging", action: function (d) { numberAgingDays(d); } },
+    { key: 4, text: "Number Aging (1-70)", action: function (d) { numberAgingDraws(d); } },
+    { key: 5, text: "10 oldest and 10 youngest (1-70)", action: function (d) { oldestAndYoungest(d); } },
+    { key: 6, text: "Before last drawing", action: function (d) { beforeLastDrawing(d); } }, // x-winner, y-age in draws
 ];
 //{key : 3, text : "History of all numbers", action : function(n,d) { numberHistory(n,d)} },
 // for (n=1; n <=75; n++) {
@@ -68,23 +70,15 @@ $(document).ready(function () {
         });
     });
 });
-function getdata() {
-    return __awaiter(this, void 0, void 0, function () {
-        var data;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, $.ajax({
-                        url: apiBase + "getdata"
-                    })["catch"](function (error) {
-                        console.error("getdata error", error);
-                    })];
-                case 1:
-                    data = _a.sent();
-                    console.log(data);
-                    return [2 /*return*/, data];
-            }
+function buildNumbersHistory(drawings) {
+    var numbersHistory = {}; // {winningnumber : list of dates it won on }
+    _.each(drawings, function (d) {
+        _.each(d[1], function (n) {
+            numbersHistory[n] = numbersHistory[n] || []; // initialize date array
+            numbersHistory[n].push(d[0]); // d[0] is derawing date
         });
     });
+    return numbersHistory;
 }
 function setTicks(list) {
     return {
@@ -92,7 +86,7 @@ function setTicks(list) {
         min: _.min(list)
     };
 }
-function numberHistory(number, history) {
+function eachNumberHistory(number, history) {
     var labels = history[sprintf("%02d", number)]; // prepend 0 to single digit numbers
     //let labels = history[number];
     var data = _.map(labels, function (d) { return 1; }); // set it 1 for any date it occured
@@ -160,13 +154,15 @@ function numberHistory(number, history) {
         }
     });
 }
-function occurenceTotals(chartId, data) {
+function occurenceTotals(data) {
     return __awaiter(this, void 0, void 0, function () {
-        var dataCooked, sorted, values, labels, ctx;
+        var numbersHistory, dataCooked, sorted, values, labels, ctx;
         return __generator(this, function (_a) {
+            numbersHistory = buildNumbersHistory(data);
             dataCooked = [];
-            _.each(data.history, function (list, num) {
-                dataCooked.push({ num: num, occurence: list.length });
+            _.each(numbersHistory, function (v, k) {
+                var list = v;
+                dataCooked.push({ num: k, occurence: list.length });
             });
             sorted = _.orderBy(dataCooked, ['num'], ['desc']);
             values = _.map(sorted, function (item) { return item.occurence; });
@@ -218,14 +214,15 @@ function occurenceTotals(chartId, data) {
         });
     });
 }
-function occurenceDetails(chartId, data) {
+function occurenceDetails(data) {
     return __awaiter(this, void 0, void 0, function () {
-        var labels, datasets, yAxes, ctx;
+        var labels, numbersHistory, datasets, yAxes, ctx;
         return __generator(this, function (_a) {
-            labels = data.dates;
+            labels = _.sortBy(_.map(data, function (d) { return d[0]; }));
+            numbersHistory = buildNumbersHistory(data);
             datasets = [];
             yAxes = [];
-            _.each(data.history, function (dates, winner) {
+            _.each(numbersHistory, function (dates, winner) {
                 datasets.push({
                     label: winner,
                     // if number was a winner, set datapoint to it, ortherwise null
@@ -292,11 +289,11 @@ function occurenceDetails(chartId, data) {
         });
     });
 }
-function timeLapse(chartId, data) {
+function timeLapse(data) {
     return __awaiter(this, void 0, void 0, function () {
         var labels, ctx, dayIndex;
         return __generator(this, function (_a) {
-            labels = data.dates;
+            labels = _.sortBy(_.map(data, function (d) { return d[0]; }));
             ctx = document.getElementById('mainChartCanvas');
             if (mainChart)
                 mainChart.destroy();
@@ -357,145 +354,189 @@ function timeLapse(chartId, data) {
             });
             dayIndex = 0;
             window.animationTimer = setInterval(function () {
-                var daywinners = data.drawings[data.dates[dayIndex]]; // first day of lotto drawing
-                var dayDataPoints = _.map(daywinners, function (winner) { return { x: data.dates[dayIndex], y: parseInt(winner) }; });
+                var daywinners = _.find(data, function (d) { return d[0] == labels[dayIndex]; })[1]; // day of lotto drawing
+                var dayDataPoints = _.map(daywinners, function (winner) { return { x: labels[dayIndex], y: parseInt(winner) }; });
                 mainChart.data.datasets[0].data = dayDataPoints;
                 mainChart.update();
                 dayIndex++;
-                if (dayIndex == data.dates.length)
+                if (dayIndex == labels.length)
                     clearTimeout(window.animationTimer);
             }, 10);
             return [2 /*return*/];
         });
     });
 }
-function numberAgingDays(chartId, data) {
+function numberAgingDays(data) {
     return __awaiter(this, void 0, void 0, function () {
-        var dataCooked, ms2days, sorted, values, labels, ctx;
+        var numbersHistory, dataCooked, ms2days, sorted, values, labels, ctx;
         return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, getdata()];
-                case 1:
-                    data = _a.sent();
-                    dataCooked = [];
-                    ms2days = 1000 * 3600 * 24;
-                    _.each(data.history, function (list, num) {
-                        dataCooked.push({ num: num, age: Math.floor((new Date().getTime() - new Date(list.pop()).getTime()) / ms2days) }); // age is in days
-                    });
-                    sorted = _.orderBy(dataCooked, ['age'], ['desc']);
-                    values = _.map(sorted, function (item) { return item.age; });
-                    labels = _.map(sorted, function (item) { return item.num; });
-                    console.log("labels", labels);
-                    console.log("values", values);
-                    ctx = document.getElementById('mainChartCanvas');
-                    if (mainChart)
-                        mainChart.destroy();
-                    mainChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Winning Number Age (in days)',
-                                    data: values,
-                                    borderWidth: 1
-                                },
-                            ]
+            numbersHistory = buildNumbersHistory(data);
+            dataCooked = [];
+            ms2days = 1000 * 3600 * 24;
+            _.each(numbersHistory, function (v, num) {
+                var list = v;
+                dataCooked.push({ num: num, age: Math.floor((new Date().getTime() - new Date(list.pop()).getTime()) / ms2days) }); // age is in days
+            });
+            sorted = _.orderBy(dataCooked, ['age'], ['desc']);
+            values = _.map(sorted, function (item) { return item.age; });
+            labels = _.map(sorted, function (item) { return item.num; });
+            console.log("labels", labels);
+            console.log("values", values);
+            ctx = document.getElementById('mainChartCanvas');
+            if (mainChart)
+                mainChart.destroy();
+            mainChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Winning Number Age (in days)',
+                            data: values,
+                            borderWidth: 1
                         },
-                        options: {
-                            responsive: true,
-                            title: {
-                                display: true,
-                                text: "Winning numbers age in descending number order"
-                            },
-                            legend: {
-                                position: 'bottom'
-                            },
-                            scales: {
-                                yAxes: [{
-                                        type: 'linear',
-                                        position: 'left',
-                                        scaleLabel: {
-                                            display: true,
-                                            labelString: 'Age in days'
-                                        }
-                                    }]
-                            },
-                            plugins: {
-                                colorschemes: {
-                                    scheme: 'brewer.Paired12'
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    title: {
+                        display: true,
+                        text: "Winning numbers age in descending age order"
+                    },
+                    legend: {
+                        position: 'bottom'
+                    },
+                    scales: {
+                        yAxes: [{
+                                type: 'linear',
+                                position: 'left',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Age in days'
                                 }
-                            }
+                            }]
+                    },
+                    plugins: {
+                        colorschemes: {
+                            scheme: 'brewer.Paired12'
                         }
-                    });
-                    return [2 /*return*/];
-            }
+                    }
+                }
+            });
+            return [2 /*return*/];
         });
     });
 }
-function numberAgingDraws(chartId, data) {
+function oldestAndYoungest(data) {
+    var numbersHistory = buildNumbersHistory(data);
+    var dates = _.sortBy(_.map(data, function (d) { return d[0]; })); //chartjs x - all lotto dates
+    var datesLatestFirst = _.reverse(dates); // for ease of processing
+    var dataCooked = []; // {num, age_of_last_occurence in number of draws since the lat win}   
+    _.each(numbersHistory, function (v, num) {
+        var list = v;
+        if (num < "70")
+            dataCooked.push({ num: num, age: ageInDraws(datesLatestFirst, list.pop()) }); // list.pop() is the last time the numebr won
+    });
+    var sorted = _.orderBy(dataCooked, ['age'], ['desc']); // sort numbers in descending age order
+    var filtered = [];
+    for (var i = 0; i < sorted.length; i++) {
+        if (i < 10 || i >= sorted.length - 10)
+            filtered.push(sorted[i]);
+    }
+    var values = _.map(filtered, function (item) { return item.age; });
+    var labels = _.map(filtered, function (item) { return item.num; });
+    console.log("labels", labels);
+    console.log("values", values);
+    showAgingChart(labels, values);
+}
+function beforeLastDrawing(data) {
+    var lastDraw = data.pop();
+    var numbersHistory = buildNumbersHistory(data);
+    data.push(lastDraw);
+    var dates = _.sortBy(_.map(data, function (d) { return d[0]; })); //chartjs x - all lotto dates
+    var datesLatestFirst = _.reverse(dates); // for ease of processing
+    var dataCooked = []; // {num, age_of_last_occurence in number of draws since the lat win}   
+    _.each(numbersHistory, function (v, num) {
+        var list = v;
+        if (num < "70")
+            dataCooked.push({ num: num, age: ageInDraws(datesLatestFirst, list.pop()) }); // list.pop() is the last time the numebr won
+    });
+    var sorted = _.orderBy(dataCooked, ['age'], ['desc']); // sort numbers in descending age order
+    var filtered = [];
+    for (var i = 0; i < sorted.length; i++) {
+        if (i < 10 || i >= sorted.length - 10)
+            filtered.push(sorted[i]);
+    }
+    var values = _.map(filtered, function (item) { return item.age; });
+    var labels = _.map(filtered, function (item) { return item.num; });
+    console.log("labels", labels);
+    console.log("values", values);
+    showAgingChart(labels, values);
+}
+function numberAgingDraws(data) {
     return __awaiter(this, void 0, void 0, function () {
-        var datesLatestFirst, dataCooked, sorted, values, labels, ctx;
+        var numbersHistory, dates, datesLatestFirst, dataCooked, sorted, values, labels;
         return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, getdata()];
-                case 1:
-                    data = _a.sent();
-                    datesLatestFirst = _.reverse(data.dates);
-                    dataCooked = [];
-                    _.each(data.history, function (list, num) {
-                        if (num < "70")
-                            dataCooked.push({ num: num, age: ageInDraws(datesLatestFirst, list.pop()) }); // list.pop() is the last time the numebr won
-                    });
-                    sorted = _.orderBy(dataCooked, ['age'], ['desc']);
-                    values = _.map(sorted, function (item) { return item.age; });
-                    labels = _.map(sorted, function (item) { return item.num; });
-                    console.log("labels", labels);
-                    console.log("values", values);
-                    ctx = document.getElementById('mainChartCanvas');
-                    if (mainChart)
-                        mainChart.destroy();
-                    mainChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Winning Number Age (in draws)',
-                                    data: values,
-                                    borderWidth: 1
-                                },
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            title: {
-                                display: true,
-                                text: "Winning numbers age in descending number order"
-                            },
-                            legend: {
-                                position: 'bottom'
-                            },
-                            scales: {
-                                yAxes: [{
-                                        type: 'linear',
-                                        position: 'left',
-                                        scaleLabel: {
-                                            display: true,
-                                            labelString: 'Age in draws'
-                                        }
-                                    }]
-                            },
-                            plugins: {
-                                colorschemes: {
-                                    scheme: 'brewer.Paired12'
-                                }
-                            }
-                        }
-                    });
-                    return [2 /*return*/];
-            }
+            numbersHistory = buildNumbersHistory(data);
+            dates = _.sortBy(_.map(data, function (d) { return d[0]; }));
+            datesLatestFirst = _.reverse(dates);
+            dataCooked = [];
+            _.each(numbersHistory, function (v, num) {
+                var list = v;
+                if (num < "70")
+                    dataCooked.push({ num: num, age: ageInDraws(datesLatestFirst, list.pop()) }); // list.pop() is the last time the numebr won
+            });
+            sorted = _.orderBy(dataCooked, ['age'], ['desc']);
+            values = _.map(sorted, function (item) { return item.age; });
+            labels = _.map(sorted, function (item) { return item.num; });
+            console.log("labels", labels);
+            console.log("values", values);
+            showAgingChart(labels, values);
+            return [2 /*return*/];
         });
+    });
+}
+function showAgingChart(labels, values) {
+    var ctx = document.getElementById('mainChartCanvas');
+    if (mainChart)
+        mainChart.destroy();
+    mainChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Winning Number Age (in number of draws since the last occurence)',
+                    data: values,
+                    borderWidth: 1
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            title: {
+                display: true,
+                text: "Winning numbers age in descending age order"
+            },
+            legend: {
+                position: 'bottom'
+            },
+            scales: {
+                yAxes: [{
+                        type: 'linear',
+                        position: 'left',
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Age in draws'
+                        }
+                    }]
+            },
+            plugins: {
+                colorschemes: {
+                    scheme: 'brewer.Paired12'
+                }
+            }
+        }
     });
 }
 function ageInDraws(list, dt) {
